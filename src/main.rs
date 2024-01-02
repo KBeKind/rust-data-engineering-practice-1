@@ -5,6 +5,7 @@ use rust_proj_8::create_fruit_salad;
 use std::collections::{LinkedList, VecDeque};
 
 use std::collections::HashMap;
+use std::vec;
 
 use petgraph::graph::{self, Node, NodeIndex, UnGraph};
 use petgraph::Direction;
@@ -13,6 +14,137 @@ use std::fmt::{self, write};
 use std::collections::HashSet;
 
 use std::collections::BTreeSet;
+
+use std::cmp::Ord;
+use std::collections::BinaryHeap;
+
+use textwrap::fill;
+
+struct PageRank {
+    damping: f64,
+    iterations: usize,
+}
+
+impl PageRank {
+    // CREATES A NEW INSTANCE OF A PageRank STRUCT
+    fn new(damping: f64, iterations: usize) -> Self {
+        Self {
+            damping,
+            iterations,
+        }
+    }
+
+    // THE rank method CALCULATES AND RETURNS THE PageRank FOR EACH NODE IN THE GRAPH
+    fn rank(&self, graph: &Vec<Vec<usize>>) -> Vec<f64> {
+        // THE NUMBER OF NODES IN THE GRAPH
+        let n = graph.len();
+
+        // THE INITIAL PageRank VALUE FOR EACH NODE
+        let mut ranks = vec![1.0 / (n as f64); n];
+
+        // ITERATES THE SPECIFIED NUMBER OF TIMES
+        for _ in 0..self.iterations {
+            // A NEW VECTOR TO HOLD THE UPDATED PageRank VALUES
+            let mut new_ranks: Vec<f64> = vec![0.0; n];
+
+            // ITERATES OVER EACH NODE AND ITS EDGES IN THE GRAPH
+            for (node, edges) in graph.iter().enumerate() {
+                // THE AMOUNT OF PageRank VALUE THIS NODE CONTRIBUTES TO ITS LINKED NODES
+                let contribution = ranks[node] / (edges.len() as f64);
+
+                // DISTRIBUTES THE PageRank VALUE TO THE LINKED NODES
+                for &edge in edges {
+                    new_ranks[edge] += contribution;
+                }
+            }
+
+            // UPDATES THE PageRank VALUES USING THE DAMPING FACTOR
+            for rank in &mut new_ranks {
+                *rank = *rank * self.damping + (1.0 - self.damping) / (n as f64);
+            }
+
+            // REPLACES THE OLD PageRank VALUES WITH THE NEW VALUES
+            ranks = new_ranks;
+        }
+        // RETURNS THE FINAL PageRank VALUES
+        ranks
+    }
+}
+
+#[derive(Eq, PartialEq, Debug)]
+enum SomeFruit {
+    Fig,
+    Other(String),
+}
+
+// Implementing PartialOrd
+impl PartialOrd for SomeFruit {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+//  DEFINING FIGS AS HIGHEST PRIORITY BY IMPLEMENTING Ord
+impl Ord for SomeFruit {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match (self, other) {
+            (SomeFruit::Fig, SomeFruit::Fig) => std::cmp::Ordering::Equal,
+            (SomeFruit::Fig, SomeFruit::Other(_)) => std::cmp::Ordering::Greater,
+            (SomeFruit::Other(_), SomeFruit::Fig) => std::cmp::Ordering::Less,
+            (SomeFruit::Other(_), SomeFruit::Other(_)) => std::cmp::Ordering::Equal,
+        }
+    }
+}
+
+fn gen_fruit_salad() -> BinaryHeap<SomeFruit> {
+    let mut rng = thread_rng();
+    let list_of_fruits = vec![
+        "Apple", "Banana", "Cherry", "Grapes", "Orange", "Fig", "Fig", "Fig", "Fig", "Pear",
+        "Peach",
+    ];
+    let mut a_fruit_salad: BinaryHeap<SomeFruit> = BinaryHeap::new();
+
+    let mut figs_count: i32 = 0;
+    while figs_count < 2 {
+        let fruit: &&str = list_of_fruits.choose(&mut rng).unwrap();
+        if *fruit == "Fig" {
+            figs_count += 1;
+            a_fruit_salad.push(SomeFruit::Fig);
+        } else {
+            a_fruit_salad.push(SomeFruit::Other(fruit.to_string()));
+        }
+    }
+    a_fruit_salad
+}
+
+// fn max(self, other: Self) -> Self
+// where
+//     Self: Sized,
+// {
+//     std::cmp::max_by(self, other, Ord::cmp)
+// }
+
+// fn min(self, other: Self) -> Self
+// where
+//     Self: Sized,
+// {
+//     std::cmp::min_by(self, other, Ord::cmp)
+// }
+
+// fn clamp(self, min: Self, max: Self) -> Self
+// where
+//     Self: Sized,
+//     Self: PartialOrd,
+// {
+//     assert!(min <= max);
+//     if self < std::cmp::min {
+//         std::cmp::min
+//     } else if self > std::cmp::max {
+//         std::cmp::max
+//     } else {
+//         self
+//     }
+// }
 
 fn generate_fruit() -> &'static str {
     let fruits: [&str; 8] = [
@@ -199,6 +331,27 @@ fn main() {
         }
         println!("{}: {:?}", amount, fruits_set);
     }
+
+    let a_new_salad: BinaryHeap<SomeFruit> = gen_fruit_salad();
+
+    for a_fruit in a_new_salad {
+        println!("{:?}", a_fruit);
+    }
+
+    let a_graph: Vec<Vec<usize>> = vec![vec![1, 2], vec![0], vec![0, 3], vec![0], vec![0, 1]];
+
+    let site_names = vec!["site1", "site2", "site3", "site4", "site5"];
+
+    let pagerank = PageRank::new(0.85, 100);
+
+    let ranks = pagerank.rank(&a_graph);
+
+    for (i, rank) in ranks.iter().enumerate() {
+        println!("The Page rank of {} is {}", site_names[i], rank);
+    }
+
+    let explanation = "The PageRank algorithm is a probabilistic graph-theory algorithm that measures the importance of a website based on the importance of its linked websites. The PageRank algorithm is used by search engines to determine the most relevant pages for a user's search.";
+    println!("{}", fill(explanation, 78))
 }
 
 fn logic(numbers: Vec<i32>) -> Vec<(i32, u32)> {
